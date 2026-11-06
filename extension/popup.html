@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { width: 300px; padding: 12px; font-family: system-ui, Segoe UI, sans-serif; font-size: 14px; }
+  h1 { font-size: 16px; margin: 0 0 8px; } h1 span { color: #2563eb; }
+  label { display: block; font-size: 12px; color: #6b7280; margin-top: 8px; }
+  input { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+  button { width: 100%; margin-top: 10px; padding: 8px; border: none; border-radius: 6px; background: #2563eb; color: white; cursor: pointer; }
+  #status { margin-top: 8px; min-height: 1.2em; }
+  #settings { display: none; margin-top: 8px; border-top: 1px solid #eee; }
+  .link { background: none; color: #6b7280; font-size: 12px; }
+</style>
+</head>
+<body>
+  <h1>i<span>Track</span>Jobs</h1>
+
+  <label>Job title</label>
+  <input id="title">
+  <label>Company</label>
+  <input id="company">
+  <button id="save">Log this job</button>
+  <div id="status"></div>
+
+  <button class="link" id="toggle-settings">⚙ Settings</button>
+  <div id="settings">
+    <label>API key</label>
+    <input id="api-key" type="password">
+    <button id="save-settings">Save key</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
