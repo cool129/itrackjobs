@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import Depends, FastAPI, Response
+from fastapi import Depends, FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy import Date, Integer, String, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
@@ -39,6 +39,8 @@ def get_db():
 # ---------- API ----------
 app = FastAPI()
 
+STATUSES = ["Saved", "Applied", "Interview", "Offer", "Rejected", "Ghosted"]
+
 
 class JobIn(BaseModel):
     title: str
@@ -56,6 +58,12 @@ class JobOut(BaseModel):
     applied_date: date
 
     model_config = {"from_attributes": True}
+
+
+class JobUpdate(BaseModel):
+    title: str | None = None
+    company: str | None = None
+    status: str | None = None
 
 
 @app.get("/")
@@ -81,3 +89,30 @@ def create_job(job: JobIn, response: Response, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_job)
     return new_job
+
+
+@app.patch("/jobs/{job_id}", response_model=JobOut)
+def update_job(job_id: int, changes: JobUpdate, db: Session = Depends(get_db)):
+    job = db.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    data = changes.model_dump(exclude_unset=True)
+    if "status" in data and data["status"] not in STATUSES:
+        raise HTTPException(status_code=422, detail=f"Status must be one of {STATUSES}")
+
+    for field, value in data.items():
+        setattr(job, field, value)
+
+    db.commit()
+    db.refresh(job)
+    return job
+
+
+@app.delete("/jobs/{job_id}", status_code=204)
+def delete_job(job_id: int, db: Session = Depends(get_db)):
+    job = db.get(Job, job_id)                                    # blank 1: find the job
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")  # blank 2: same 404 as PATCH
+    db.delete(job)                                               # blank 3: delete is the opposite of add
+    db.commit()
