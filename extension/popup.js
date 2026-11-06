@@ -32,11 +32,16 @@ function readJobFromPage() {
   let title = site ? firstText(site.title) : "";
   let company = site ? firstText(site.company) : "";
 
-  // Fallback for any other site: use the page title
-  if (!title) title = document.title;
+  // Tab title looks like "(2) Title | Company | LinkedIn"
+  const tabTitle = document.title.replace(/^\(\d+\)\s*/, "");  // remove "(2) " notification count
+  const parts = tabTitle.split(" | ");
 
-  // "Title | Company | LinkedIn" → "Title"
+  // Fallbacks: use the tab title when the page selectors don't find anything
+  if (!title) title = parts[0];
+  if (!company && parts.length >= 3) company = parts[1];
+
   title = title.split(" | ")[0].trim();
+  company = company.trim();
 
   // One clean link per LinkedIn job, so duplicates are caught
   const match = location.href.match(/currentJobId=(\d+)/) || location.href.match(/jobs\/view\/(\d+)/);
