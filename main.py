@@ -1,10 +1,12 @@
 import os
 import secrets
 from datetime import date
+from pathlib import Path
 from typing import Annotated
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Response
+from fastapi.responses import FileResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from sqlalchemy import Date, Integer, String, create_engine, select
@@ -65,6 +67,7 @@ DB = Annotated[Session, Depends(get_db)]
 app = FastAPI(title="iTrackJobs API")
 
 STATUSES = ["Saved", "Applied", "Interview", "Offer", "Rejected", "Ghosted"]
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 class JobIn(BaseModel):
@@ -91,9 +94,14 @@ class JobUpdate(BaseModel):
     status: str | None = None
 
 
-@app.get("/")
-def home():
-    return {"message": "iTrackJobs is running"}
+@app.get("/", include_in_schema=False)
+def dashboard():
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 @app.get("/jobs", response_model=list[JobOut], dependencies=AUTH)

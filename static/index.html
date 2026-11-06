@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iTrackJobs</title>
+  <style>
+    body { font-family: system-ui, Segoe UI, sans-serif; background: #f4f6f8; color: #1d2330; margin: 0; }
+    main { max-width: 800px; margin: 0 auto; padding: 20px; }
+    h1 span { color: #2563eb; }
+    .card { background: white; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    form { display: flex; flex-wrap: wrap; gap: 8px; }
+    input, select, button { font: inherit; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; }
+    input { flex: 1 1 200px; }
+    button { background: #2563eb; color: white; border: none; cursor: pointer; }
+    button.delete { background: #ef4444; }
+    .job { display: flex; justify-content: space-between; align-items: center; gap: 8px;
+           padding: 10px 0; border-top: 1px solid #eee; flex-wrap: wrap; }
+    .job:first-child { border-top: none; }
+    .meta { color: #6b7280; font-size: 0.9em; }
+    #message { color: #6b7280; margin-top: 8px; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>i<span>Track</span>Jobs</h1>
+
+  <!-- 1. Form to add a job -->
+  <section class="card">
+    <form id="add-form">
+      <input id="title" placeholder="Job title" required>
+      <input id="company" placeholder="Company" required>
+      <input id="url" placeholder="Job link (optional)">
+      <button type="submit">Add job</button>
+    </form>
+    <div id="message"></div>
+  </section>
+
+  <!-- 2. List of jobs (filled in by JavaScript) -->
+  <section class="card">
+    <h2>My applications (<span id="count">0</span>)</h2>
+    <div id="job-list">Loading…</div>
+  </section>
+</main>
+
+<script>
+const STATUSES = ["Saved", "Applied", "Interview", "Offer", "Rejected", "Ghosted"];
+
+// ---- API key: ask once, remember in this browser ----
+function getApiKey() {
+  let key = localStorage.getItem("itj_api_key");
+  if (!key) {
+    key = prompt("Enter your iTrackJobs API key:");
+    if (key) localStorage.setItem("itj_api_key", key.trim());
+  }
+  return key;
+}
+
+// ---- One helper for every API call ----
+async function api(path, method = "GET", body = null) {
+  const options = {
+    method: method,
+    headers: { "Content-Type": "application/json", "X-API-Key": getApiKey() },
+  };
+  if (body) options.body = JSON.stringify(body);
+
+  const response = await fetch(path, options);
+  if (response.status === 401) {
+    localStorage.removeItem("itj_api_key");
+    throw new Error("Wrong API key. Refresh the page to try again.");
+  }
+  if (!response.ok) throw new Error("Error " + response.status);
+  if (response.status === 204) return null;
+  return response.json();
+}
+
+// ---- Stop job text from being run as HTML (security!) ----
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ---- Draw the list of jobs ----
+function showJobs(jobs) {
+  document.getElementById("count").textContent = jobs.length;
+  const list = document.getElementById("job-list");
+
+  if (jobs.length === 0) {
+    list.textContent = "No applications yet. Add one above!";
+    return;
+  }
+
+  list.innerHTML = jobs.map(job => `
+    <div class="job">
+      <div>
+        <strong>${escapeHtml(job.title)}</strong> at ${escapeHtml(job.company)}
+        <div class="meta">Applied ${job.applied_date}</div>
+      </div>
+      <div>
+        <select onchange="changeStatus(${job.id}, this.value)">
+          ${STATUSES.map(s => `<option ${s === job.status ? "selected" : ""}>${s}</option>`).join("")}
+        </select>
+        <button class="delete" onclick="deleteJob(${job.id})">Delete</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function showMessage(text) {
+  document.getElementById("message").textContent = text;
+}
+
+// ---- Actions ----
+async function loadJobs() {
+  try {
+    showJobs(await api("/jobs"));
+  } catch (error) {
+    showMessage(error.message);
+  }
+}
+
+async function changeStatus(id, status) {
+  try {
+    await api(`/jobs/${id}`, "PATCH", { status: status });
+    showMessage("Status updated ✓");
+  } catch (error) {
+    showMessage(error.message);
+  }
+}
+
+async function deleteJob(id) {
+  if (!confirm("Delete this job?")) return;
+  try {
+    await api(`/jobs/${id}`, "DELETE");
+    loadJobs();
+  } catch (error) {
+    showMessage(error.message);
+  }
+}
+
+document.getElementById("add-form").addEventListener("submit", async (event) => {
+  event.preventDefault(); // stop the page from reloading
+  try {
+    await api("/jobs", "POST", {
+      title: document.getElementById("title").value,
+      company: document.getElementById("company").value,
+      url: document.getElementById("url").value,
+    });
+    event.target.reset();
+    showMessage("Job added ✓");
+    loadJobs();
+  } catch (error) {
+    showMessage(error.message);
+  }
+});
+
+// ---- Start ----
+loadJobs();
+</script>
+</body>
+</html>

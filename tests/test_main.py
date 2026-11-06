@@ -1,5 +1,6 @@
 import os
 
+# Set test settings BEFORE importing the app
 os.environ["ITJ_API_KEY"] = "test-key"
 os.environ["ITJ_DATABASE_URL"] = "sqlite:///test_itrackjobs.db"
 
@@ -22,10 +23,16 @@ def setup_function():
     Base.metadata.create_all(engine)
 
 
-def test_home_is_public():
+def test_health_is_public():
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_dashboard_loads():
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "iTrackJobs is running"}
+    assert "iTrackJobs" in response.text
 
 
 def test_jobs_require_api_key():
