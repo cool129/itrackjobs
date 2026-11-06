@@ -1,6 +1,7 @@
 import os
 import secrets
 from datetime import date
+from typing import Annotated
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Response
@@ -15,11 +16,14 @@ API_KEY = os.getenv("ITJ_API_KEY")
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
-def require_api_key(key: str | None = Depends(api_key_header)):
+def require_api_key(key: Annotated[str | None, Depends(api_key_header)]):
     if not API_KEY:
         raise HTTPException(status_code=500, detail="Server has no ITJ_API_KEY set")
     if key is None or not secrets.compare_digest(key, API_KEY):
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+
+AUTH = [Depends(require_api_key)]
 
 
 # ---------- Database setup ----------
@@ -52,6 +56,9 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+DB = Annotated[Session, Depends(get_db)]
 
 
 # ---------- API ----------
@@ -89,13 +96,13 @@ def home():
     return {"message": "iTrackJobs is running"}
 
 
-@app.get("/jobs", response_model=list[JobOut], dependencies=[Depends(require_api_key)])
-def list_jobs(db: Session = Depends(get_db)):
+@app.get("/jobs", response_model=list[JobOut], dependencies=AUTH)
+def list_jobs(db: DB):
     return db.scalars(select(Job).order_by(Job.id.desc())).all()
 
 
-@app.post("/jobs", response_model=JobOut, status_code=201, dependencies=[Depends(require_api_key)])
-def create_job(job: JobIn, response: Response, db: Session = Depends(get_db)):
+@app.post("/jobs", response_model=JobOut, status_code=201, dependencies=AUTH)
+def create_job(job: JobIn, response: Response, db: DB):
     if job.url:
         existing = db.scalars(select(Job).where(Job.url == job.url)).first()
         if existing:
@@ -109,8 +116,8 @@ def create_job(job: JobIn, response: Response, db: Session = Depends(get_db)):
     return new_job
 
 
-@app.patch("/jobs/{job_id}", response_model=JobOut, dependencies=[Depends(require_api_key)])
-def update_job(job_id: int, changes: JobUpdate, db: Session = Depends(get_db)):
+@app.patch("/jobs/{job_id}", response_model=JobOut, dependencies=AUTH)
+def update_job(job_id: int, changes: JobUpdate, db: DB):
     job = db.get(Job, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -127,8 +134,8 @@ def update_job(job_id: int, changes: JobUpdate, db: Session = Depends(get_db)):
     return job
 
 
-@app.delete("/jobs/{job_id}", status_code=204, dependencies=[Depends(require_api_key)])
-def delete_job(job_id: int, db: Session = Depends(get_db)):
+@app.delete("/jobs/{job_id}", status_code=204, dependencies=AUTH)
+def delete_job(job_id: int, db: DB):
     job = db.get(Job, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")

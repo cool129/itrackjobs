@@ -3,9 +3,9 @@ import os
 os.environ["ITJ_API_KEY"] = "test-key"
 os.environ["ITJ_DATABASE_URL"] = "sqlite:///test_itrackjobs.db"
 
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi.testclient import TestClient
 
-from main import Base, app, engine  # noqa: E402
+from main import Base, app, engine
 
 client = TestClient(app)
 HEADERS = {"X-API-Key": "test-key"}
