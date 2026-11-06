@@ -23,7 +23,8 @@ def require_api_key(key: str | None = Depends(api_key_header)):
 
 
 # ---------- Database setup ----------
-engine = create_engine("sqlite:///itrackjobs.db")
+DATABASE_URL = os.getenv("ITJ_DATABASE_URL", "sqlite:///itrackjobs.db")
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 
 
