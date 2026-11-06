@@ -8,6 +8,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Check out code
@@ -29,3 +30,25 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -v
+
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      - name: Build image
+        run: docker build -t itrackjobs .
+
+      - name: Smoke test the container
+        run: |
+          docker run -d --name app -p 8000:8000 -e ITJ_API_KEY=ci-test-key itrackjobs
+          sleep 5
+          curl --fail http://localhost:8000/health
+
+      - name: Show container logs if something failed
+        if: failure()
+        run: docker logs app
