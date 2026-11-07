@@ -1,6 +1,6 @@
 import os
 import secrets
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
-from sqlalchemy import Date, Integer, String, create_engine, select
+from sqlalchemy import Date, Integer, String, create_engine, select, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 # ---------- Security ----------
@@ -26,6 +26,12 @@ def require_api_key(key: Annotated[str | None, Depends(api_key_header)]):
 
 
 AUTH = [Depends(require_api_key)]
+
+
+# ---------- Dates ----------
+def today() -> date:
+    """Today's date in UTC, so the server and the cloud always agree."""
+    return datetime.now(UTC).date()
 
 
 # ---------- Database setup ----------
@@ -46,7 +52,7 @@ class Job(Base):
     company: Mapped[str] = mapped_column(String(200))
     url: Mapped[str] = mapped_column(String(1000), default="")
     status: Mapped[str] = mapped_column(String(30), default="Applied")
-    applied_date: Mapped[date] = mapped_column(Date, default=date.today)
+    applied_date: Mapped[date] = mapped_column(Date, default=today)
 
 
 Base.metadata.create_all(engine)
@@ -61,6 +67,21 @@ def get_db():
 
 
 DB = Annotated[Session, Depends(get_db)]
+
+
+# ---------- Ghosted rule ----------
+GHOST_AFTER_DAYS = int(os.getenv("ITJ_GHOST_DAYS", "21"))
+
+
+def mark_ghosted(db: Session) -> None:
+    """Mark jobs still 'Applied' after GHOST_AFTER_DAYS days as 'Ghosted'."""
+    cutoff = today() - timedelta(days=GHOST_AFTER_DAYS)
+    db.execute(
+        update(Job)
+        .where(Job.status == "Applied", Job.applied_date <= cutoff)
+        .values(status="Ghosted")
+    )
+    db.commit()
 
 
 # ---------- API ----------
@@ -92,6 +113,7 @@ class JobUpdate(BaseModel):
     title: str | None = None
     company: str | None = None
     status: str | None = None
+    applied_date: date | None = None
 
 
 @app.get("/", include_in_schema=False)
@@ -106,6 +128,7 @@ def health():
 
 @app.get("/jobs", response_model=list[JobOut], dependencies=AUTH)
 def list_jobs(db: DB):
+    mark_ghosted(db)
     return db.scalars(select(Job).order_by(Job.id.desc())).all()
 
 
