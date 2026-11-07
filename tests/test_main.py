@@ -35,6 +35,13 @@ def test_dashboard_loads():
     assert "iTrackJobs" in response.text
 
 
+def test_logos_load():
+    for name in ["logo-light.png", "logo-dark.png"]:
+        response = client.get(f"/static/{name}")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/png"
+
+
 def test_jobs_require_api_key():
     assert client.get("/jobs").status_code == 401
     assert client.get("/jobs", headers={"X-API-Key": "wrong"}).status_code == 401

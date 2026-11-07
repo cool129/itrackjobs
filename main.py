@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse
 from fastapi.security import APIKeyHeader
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import Date, Integer, String, create_engine, select, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
@@ -89,6 +90,7 @@ app = FastAPI(title="iTrackJobs API")
 
 STATUSES = ["Saved", "Applied", "Interview", "Offer", "Rejected", "Ghosted"]
 STATIC_DIR = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 class JobIn(BaseModel):
