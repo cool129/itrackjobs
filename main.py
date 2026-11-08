@@ -37,7 +37,7 @@ def today() -> date:
 
 # ---------- Database setup ----------
 DATABASE_URL = os.getenv("ITJ_DATABASE_URL", "sqlite:///itrackjobs.db")
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine)
 
 
