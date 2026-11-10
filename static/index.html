@@ -148,7 +148,11 @@ function showJobs(jobs) {
   const list = document.getElementById("job-list");
 
   if (jobs.length === 0) {
-    list.textContent = "No applications yet. Add one above!";
+    if (allJobs.length === 0) {
+      list.textContent = "No applications yet. Add one above!";
+    } else {
+    list.textContent = "No jobs with this status.";
+    }
     return;
   }
 
