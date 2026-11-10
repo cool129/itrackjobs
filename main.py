@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from sqlalchemy import Date, Integer, String, create_engine, select, update
+from sqlalchemy import Date, Integer, String, Text, create_engine, select, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 # ---------- Security ----------
@@ -54,7 +54,7 @@ class Job(Base):
     url: Mapped[str] = mapped_column(String(1000), default="")
     status: Mapped[str] = mapped_column(String(30), default="Applied")
     applied_date: Mapped[date] = mapped_column(Date, default=today)
-
+    notes: Mapped[str] = mapped_column(Text, default="")
 
 Base.metadata.create_all(engine)
 
@@ -98,6 +98,7 @@ class JobIn(BaseModel):
     company: str
     url: str = ""
     status: str = "Applied"
+    notes: str = ""
 
 
 class JobOut(BaseModel):
@@ -107,6 +108,7 @@ class JobOut(BaseModel):
     url: str
     status: str
     applied_date: date
+    notes: str
 
     model_config = {"from_attributes": True}
 
@@ -116,6 +118,8 @@ class JobUpdate(BaseModel):
     company: str | None = None
     status: str | None = None
     applied_date: date | None = None
+    notes: str | None = None
+   
 
 
 @app.get("/", include_in_schema=False)

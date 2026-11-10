@@ -90,3 +90,20 @@ def test_delete_job():
     job_id = client.post("/jobs", json=JOB, headers=HEADERS).json()["id"]
     assert client.delete(f"/jobs/{job_id}", headers=HEADERS).status_code == 204
     assert client.delete(f"/jobs/{job_id}", headers=HEADERS).status_code == 404
+
+
+def test_notes():
+    response = client.post("/jobs", json={**JOB, "notes": "Recruiter: Sarah"}, headers=HEADERS)
+    assert response.status_code == 201
+    assert response.json()["notes"] == "Recruiter: Sarah"
+
+    job_id = response.json()["id"]
+    response = client.patch(f"/jobs/{job_id}", json={"notes": "Interview Friday"}, headers=HEADERS)
+    assert response.status_code == 200
+    assert response.json()["notes"] == "Interview Friday"
+
+
+def test_notes_default_empty():
+    response = client.post("/jobs", json=JOB, headers=HEADERS)
+    assert response.status_code == 201
+    assert response.json()["notes"] == ""
