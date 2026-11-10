@@ -7,8 +7,50 @@
   <style>
     body { font-family: system-ui, Segoe UI, sans-serif; background: #f4f6f8; color: #1d2330; margin: 0; }
     main { max-width: 800px; margin: 0 auto; padding: 20px; }
+
+    /* ---- Logo ---- */
     .brand { margin: 8px 0 16px; }
-        .logo { display: block; width: 120px; max-width: 100%; height: auto; }
+    .logo {
+      display: block;
+      height: 50px;
+      width: auto;
+      max-width: 100%;
+      pointer-events: none;      /* mouse goes "through" the image: no drag, no right-click "Save image" */
+      user-select: none;         /* can't be highlighted/selected */
+      -webkit-user-drag: none;   /* extra drag block for Chrome, Edge, Safari */
+    }
+
+    /* ---- Logo shine effect (GPU-friendly) ---- */
+    .logo-wrap { position: relative; display: inline-block; line-height: 0; user-select: none; }
+    .logo-shine {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      -webkit-mask: url("/static/logo-light.png") center / 100% 100% no-repeat;
+      mask: url("/static/logo-light.png") center / 100% 100% no-repeat;
+    }
+    .logo-shine::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 40%;
+      background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.9) 50%, transparent 100%);
+      transform: translateX(-120%);
+      will-change: transform;
+      animation: logo-shine 6s ease-in-out 1s infinite;
+    }
+    @keyframes logo-shine {
+      0%        { transform: translateX(-120%); }
+      70%, 100% { transform: translateX(270%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .logo-shine { display: none; }
+    }
+
+    /* ---- Page ---- */
     .card { background: white; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
     form { display: flex; flex-wrap: wrap; gap: 8px; }
     input, select, button { font: inherit; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; }
@@ -25,10 +67,13 @@
 <body>
 <main>
   <header class="brand">
-    <picture>
-      <source srcset="/static/logo-dark.png" media="(prefers-color-scheme: dark)">
-      <img src="/static/logo-light.png" alt="iTrackJobs" class="logo">
-    </picture>
+    <span class="logo-wrap">
+      <picture>
+        <source srcset="/static/logo-dark.png" media="(prefers-color-scheme: dark)">
+        <img src="/static/logo-light.png" alt="iTrackJobs" class="logo" draggable="false">
+      </picture>
+      <span class="logo-shine" aria-hidden="true"></span>
+    </span>
   </header>
 
   <!-- 1. Form to add a job -->

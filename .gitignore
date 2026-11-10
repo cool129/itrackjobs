@@ -2,3 +2,10 @@
 *.db
 __pycache__/
 .env
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform.lock.hcl.bak
+,vscode/
