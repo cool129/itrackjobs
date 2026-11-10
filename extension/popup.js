@@ -1,20 +1,48 @@
 const SERVER = "https://ca-itrackjobs.purplecliff-58dc9ef2.eastus2.azurecontainerapps.io";
 let pageUrl = "";
 
-// This function runs INSIDE the job page, not in the popup.
-// Each site has its own selectors. When a site changes its layout, update them here.
+
 function readJobFromPage() {
+  
+  function fromStructuredData() {
+    for (const script of document.querySelectorAll('script[type="application/ld+json"]')) {
+      try {
+        const data = JSON.parse(script.textContent);
+        const items = Array.isArray(data) ? data : (data["@graph"] || [data]);
+        for (const item of items) {
+          const type = item["@type"];
+          const isJob = type === "JobPosting" || (Array.isArray(type) && type.includes("JobPosting"));
+          if (!isJob) continue;
+          const org = item.hiringOrganization;
+          const company = typeof org === "string" ? org : (org && org.name) || "";
+          return { title: item.title || "", company };
+        }
+      } catch {
+        
+      }
+    }
+    return { title: "", company: "" };
+  }
+
+  
   const SITES = [
     {
       match: /linkedin\.com\/jobs/,
-      title: [".job-details-jobs-unified-top-card__job-title h1", ".t-24.t-bold", "h1"],
+      title: [".job-details-jobs-unified-top-card__job-title h1", ".t-24.t-bold"],
       company: [".job-details-jobs-unified-top-card__company-name a",
                 ".job-details-jobs-unified-top-card__company-name"],
     },
     {
       match: /indeed\.com/,
-      title: ["[data-testid='jobsearch-JobInfoHeader-title']", "h1"],
-      company: ["[data-testid='inlineHeader-companyName']"],
+      title: [
+        "[data-testid='jobsearch-JobInfoHeader-title']",
+        ".jobsearch-JobInfoHeader-title",
+      ],
+      company: [
+        "[data-testid='inlineHeader-companyName']",
+        "[data-company-name='true']",
+        "[data-testid='jobsearch-CompanyInfoContainer'] a",
+      ],
     },
   ];
 
@@ -28,24 +56,30 @@ function readJobFromPage() {
     return "";
   }
 
+  const structured = fromStructuredData();
   const site = SITES.find(s => s.match.test(location.href));
-  let title = site ? firstText(site.title) : "";
-  let company = site ? firstText(site.company) : "";
+  let title = structured.title || (site ? firstText(site.title) : "");
+  let company = structured.company || (site ? firstText(site.company) : "");
 
-  // Tab title looks like "(2) Title | Company | LinkedIn"
-  const tabTitle = document.title.replace(/^\(\d+\)\s*/, "");  // remove "(2) " notification count
+  
+  const tabTitle = document.title.replace(/^\(\d+\)\s*/, "");
   const parts = tabTitle.split(" | ");
-
-  // Fallbacks: use the tab title when the page selectors don't find anything
   if (!title) title = parts[0];
   if (!company && parts.length >= 3) company = parts[1];
 
+ 
   title = title.split(" | ")[0].trim();
-  company = company.trim();
+  title = title.replace(/\s*-\s*job post$/i, "").trim();
+  if (/indeed\.com/.test(location.href)) title = title.replace(/\s+-\s+[^-]+,\s*[A-Z]{2}\b.*$/, "").trim();
+  company = company.replace(/\s+/g, " ").trim();
+  if (/^(job search|jobs?|indeed|linkedin)$/i.test(title)) title = "";
 
-  // One clean link per LinkedIn job, so duplicates are caught
-  const match = location.href.match(/currentJobId=(\d+)/) || location.href.match(/jobs\/view\/(\d+)/);
-  const url = match ? `https://www.linkedin.com/jobs/view/${match[1]}/` : location.href;
+  
+  const linkedIn = location.href.match(/currentJobId=(\d+)/) || location.href.match(/jobs\/view\/(\d+)/);
+  const indeed = location.href.match(/[?&](?:vjk|jk)=([a-f0-9]+)/i);
+  let url = location.href;
+  if (linkedIn) url = `https://www.linkedin.com/jobs/view/${linkedIn[1]}/`;
+  else if (indeed) url = `https://www.indeed.com/viewjob?jk=${indeed[1]}`;
 
   return { title, company, url };
 }
@@ -58,6 +92,9 @@ function showStatus(text, color = "#1d2330") {
 
 async function start() {
   const { apiKey } = await chrome.storage.local.get("apiKey");
+  const { autoLog = true } = await chrome.storage.local.get("autoLog");
+  document.getElementById("auto-log").checked = autoLog;
+
   if (!apiKey) {
     document.getElementById("settings").style.display = "block";
     showStatus("Add your API key in Settings first.", "#dc2626");
@@ -65,13 +102,39 @@ async function start() {
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    
+    const JOB_PAGE_RULES = [
+      { site: /linkedin\.com/, page: /currentJobId=\d+|\/jobs\/view\/\d+/ },
+      { site: /indeed\.com/, page: /viewjob|vjk=/ },
+    ];
+    const rule = JOB_PAGE_RULES.find(r => r.site.test(tab.url || ""));
+    if (rule && !rule.page.test(tab.url)) {
+      showStatus("Open a specific job posting first, then click iTrackJobs.", "#dc2626");
+      document.getElementById("save").disabled = true;
+      return;
+    }
+
     const [{ result }] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: readJobFromPage,
     });
+
+    
+    const NOT_A_JOB = /can.?t find this page|page not found|404|(doesn.?t|does not) exist/i;
+    if (NOT_A_JOB.test(result.title)) {
+      showStatus("This doesn't look like a job posting. Open the job's own page.", "#dc2626");
+      document.getElementById("save").disabled = true;
+      return;
+    }
+
     document.getElementById("title").value = result.title;
     document.getElementById("company").value = result.company;
     pageUrl = result.url;
+
+    if (!result.title || !result.company) {
+      showStatus("Couldn't find everything. Please fill in the empty box.", "#d97706");
+    }
   } catch {
     showStatus("Can't read this page. Type the details in.", "#dc2626");
   }
@@ -96,7 +159,7 @@ document.getElementById("save").addEventListener("click", async () => {
     else if (response.status === 422) showStatus("Title and company are required.", "#dc2626");
     else showStatus("Error " + response.status, "#dc2626");
   } catch {
-    showStatus("Can't reach the server. Is uvicorn running?", "#dc2626");
+    showStatus("Can't reach the server. Try again in a few seconds.", "#dc2626");
   }
 });
 
@@ -108,6 +171,11 @@ document.getElementById("toggle-settings").addEventListener("click", () => {
 document.getElementById("save-settings").addEventListener("click", async () => {
   await chrome.storage.local.set({ apiKey: document.getElementById("api-key").value.trim() });
   showStatus("Key saved ✓", "#059669");
+});
+
+document.getElementById("auto-log").addEventListener("change", async (event) => {
+  await chrome.storage.local.set({ autoLog: event.target.checked });
+  showStatus(event.target.checked ? "Auto-log on ✓" : "Auto-log off", "#059669");
 });
 
 start();
