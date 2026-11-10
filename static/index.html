@@ -96,6 +96,7 @@
 
 <script>
 const STATUSES = ["Saved", "Applied", "Interview", "Offer", "Rejected", "Ghosted"];
+let allJobs = [];
 
 // ---- API key: ask once, remember in this browser ----
 function getApiKey() {
@@ -167,7 +168,8 @@ function showMessage(text) {
 // ---- Actions ----
 async function loadJobs() {
   try {
-    showJobs(await api("/jobs"));
+    allJobs = await api("/jobs");
+    showJobs(allJobs);
   } catch (error) {
     showMessage(error.message);
   }
@@ -183,7 +185,8 @@ async function changeStatus(id, status) {
 }
 
 async function editNotes(id) {
-  const notes = prompt("Notes for this job:");
+  const job = allJobs.find(j => j.id === id);
+  const notes = prompt("Notes for this job:", job.notes);
   if (notes === null) return;
 
   try {
