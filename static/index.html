@@ -153,6 +153,7 @@ function showJobs(jobs) {
         <select onchange="changeStatus(${job.id}, this.value)">
           ${STATUSES.map(s => `<option ${s === job.status ? "selected" : ""}>${s}</option>`).join("")}
         </select>
+        <button onclick="editNotes(${job.id})">Notes</button>
         <button class="delete" onclick="deleteJob(${job.id})">Delete</button>
       </div>
     </div>
@@ -176,6 +177,19 @@ async function changeStatus(id, status) {
   try {
     await api(`/jobs/${id}`, "PATCH", { status: status });
     showMessage("Status updated ✓");
+  } catch (error) {
+    showMessage(error.message);
+  }
+}
+
+async function editNotes(id) {
+  const notes = prompt("Notes for this job:");
+  if (notes === null) return;
+
+  try {
+    await api(`/jobs/${id}`, "PATCH", { notes: notes });
+    showMessage("Notes saved ✓");
+    loadJobs();
   } catch (error) {
     showMessage(error.message);
   }
