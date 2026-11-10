@@ -90,6 +90,15 @@
   <!-- 2. List of jobs (filled in by JavaScript) -->
   <section class="card">
     <h2>My applications (<span id="count">0</span>)</h2>
+    <select id=""status-filter" onchange="applyFilter()">
+      <option value="">All</option>
+      <option>Saved</option>
+      <option>Applied</option>
+      <option>Interview</option>
+      <option>Offer</option>
+      <option>Rejected</option>
+      <option>Ghosted</option>
+    </select>
     <div id="job-list">Loading…</div>
   </section>
 </main>
