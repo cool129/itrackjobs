@@ -147,6 +147,7 @@ function showJobs(jobs) {
       <div>
         <strong>${escapeHtml(job.title)}</strong> at ${escapeHtml(job.company)}
         <div class="meta">Applied ${job.applied_date}</div>
+        <div class="meta">Notes: ${escapeHtml(job.notes)}</div>
       </div>
       <div>
         <select onchange="changeStatus(${job.id}, this.value)">
