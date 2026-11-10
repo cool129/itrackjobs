@@ -8,4 +8,4 @@ __pycache__/
 *.tfstate.*
 *.tfvars
 .terraform.lock.hcl.bak
-,vscode/
+.vscode/
