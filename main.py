@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse
 from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import Date, Integer, String, Text, create_engine, select, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
@@ -94,8 +94,10 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 class JobIn(BaseModel):
-    title: str
-    company: str
+    model_config = {"str_strip_whitespace": True}
+
+    title: str = Field(min_length=1)
+    company: str = Field(min_length=1)
     url: str = ""
     status: str = "Applied"
     notes: str = ""

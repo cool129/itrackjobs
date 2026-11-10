@@ -107,3 +107,8 @@ def test_notes_default_empty():
     response = client.post("/jobs", json=JOB, headers=HEADERS)
     assert response.status_code == 201
     assert response.json()["notes"] == ""
+
+
+def test_empty_company_is_rejected():
+    response = client.post("/jobs", json={"title": "Test", "company": ""}, headers=HEADERS)
+    assert response.status_code == 422
