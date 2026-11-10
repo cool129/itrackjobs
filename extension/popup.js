@@ -1,4 +1,4 @@
-const SERVER = "http://127.0.0.1:8000";
+const SERVER = "https://ca-itrackjobs.purplecliff-58dc9ef2.eastus2.azurecontainerapps.io";
 let pageUrl = "";
 
 // This function runs INSIDE the job page, not in the popup.
