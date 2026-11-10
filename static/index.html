@@ -90,7 +90,7 @@
   <!-- 2. List of jobs (filled in by JavaScript) -->
   <section class="card">
     <h2>My applications (<span id="count">0</span>)</h2>
-    <select id=""status-filter" onchange="applyFilter()">
+    <select id="status-filter" onchange="applyFilter()">
       <option value="">All</option>
       <option>Saved</option>
       <option>Applied</option>
@@ -174,11 +174,16 @@ function showMessage(text) {
   document.getElementById("message").textContent = text;
 }
 
-// ---- Actions ----
+function applyFilter() {
+  const chosen = document.getElementById("status-filter").value;
+  const shown = chosen === "" ? allJobs : allJobs.filter(j => j.status === chosen);
+  showJobs(shown);
+}
+
 async function loadJobs() {
   try {
     allJobs = await api("/jobs");
-    showJobs(allJobs);
+    applyFilter();
   } catch (error) {
     showMessage(error.message);
   }
