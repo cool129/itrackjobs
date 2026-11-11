@@ -42,6 +42,7 @@ function readJobFromPage() {
         "[data-testid='inlineHeader-companyName']",
         "[data-company-name='true']",
         "[data-testid='jobsearch-CompanyInfoContainer'] a",
+        "a[href*='/cmp/']",
       ],
     },
   ];
